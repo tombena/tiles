@@ -1,10 +1,14 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-/* XXX maybe change to atomic type */
+/* XXX maybe change to atomic type
+ * single threaded code can't race
+ */
 int seqno = 0;
 
 /* return mininimum of a and b */
-int min(int a, int b)
+int
+min(int a, int b)
 {
     if (b < a)
         return b;
@@ -12,23 +16,29 @@ int min(int a, int b)
         return a;
 }
 
-/* remaining number of 3's (y)
- * remaining number of 2's (x)
+/* Find unique combinations of size 2 and size 3 tiles to
+ * make up a strip of length 30.
+ * strips: contains all such combinations
+ * seq: current combination
+ * seq_pos: position in seq
+ * r_x: remaining number of size 2 tiles
+ * r_y: remaining number of size 3 tiles
  */
 static void
 find_unique_strips(int *strips[], int seq[], int seq_pos, int r_x, int r_y)
 {
+    /* if no tiles remaining */
     if (r_x == 0 && r_y == 0)
     {
-        /* add sequence to strips
-         * increment seqno
-         */
-        printf("seq no %d found: ", seqno);
+        strips[seqno] = (int *)malloc(30 * sizeof(int));
+
+        if (strips[seqno] == NULL)
+            printf("memory allocation failed\n");
+
+        /* add seq found to unique strips */
         for (int i = 0; i < 30; i++)
-        {
-            printf("%d", seq[i]);
-        }
-        printf("\n");
+            strips[seqno][i] = seq[i];
+        /* increment seq number, this one has been used */
         seqno++;
     }
 
@@ -47,14 +57,25 @@ find_unique_strips(int *strips[], int seq[], int seq_pos, int r_x, int r_y)
     }
 }
 
-int main()
+static bool
+share_inner_edge(int seqno1, int seqno2)
 {
-    /* Find all couples (x, y) such that there can be x tiles of size 2
-     * and y tiles of size 3 in a strip of length 30
-     * 2x + 3y = 30
-     */
+   /* if 2 sums are = at any point, share inner edge
+    * except last edge
+    */
+}
 
-    /* strip of length 30: at most 30 tiles */
+static void
+compute_designs(int *strips[])
+{
+    /* there can be 11 lines */
+
+}
+
+int
+main()
+{
+    /* strip of length 30 contains at most 30 tiles */
     int max_tiles = 30;
 
     int x[max_tiles];
@@ -62,6 +83,11 @@ int main()
     int index = 0;
     int sum = 0;
 
+
+    /* Find all couples (x, y) such that there can be x tiles of size 2
+     * and y tiles of size 3 in a strip of length 30
+     * 2x + 3y = 30
+     */
     for (int i = 0; i < 30; i++)
     {
         /* strip length can't exceed 30 */
@@ -98,25 +124,42 @@ int main()
 
     int max_poss = 1000;
     int *strips[max_poss];
+
     int ind_str = 0;
 
     int min_xy = 0;
     int seq[30] = {0};
 
     /* For each couple (x, y)
+     * TODO for all couples (index)
      */
-    for (int i = 0; i < index; i++)
+    for (int i = 0; i < 2; i++)
     {
-
-        /* XXX trying for 1st couple */
         /* Find unique possibilites for strip */
         find_unique_strips(strips, seq, 0, x[i], y[i]);
-
     }
 
-    /* Find all possibilites for a parquet of 11 strips where
+
+    printf("\nall possible strips:\n");
+    /* Print all possible strips */
+    for (int i = 0; i < seqno; i++)
+    {
+        for (int j = 0; j < 30; j++)
+            printf("%d", strips[i][j]);
+        printf("\n");
+    }
+    printf("\ndone");
+
+    /* TODO Find all possibilites (designs) for a parquet of 11 strips where
      * 2 adjacent strips can't share an inner edge
      */
+     compute_designs(strips);
+
+    /* Free memory */
+    for (int i = 0; i < seqno; i++)
+        free(strips[i]);
+
+    printf("\ndone");
 
     return 0;
 }
