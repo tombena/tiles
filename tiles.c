@@ -4,6 +4,29 @@
 #include <string.h>
 
 int seqno = 0;
+int n_designs = 0;
+
+/* used in singly-linked list */
+struct node
+{
+    int value;
+    struct node *next;
+};
+
+/* add node to head of list */
+static void
+add_head(struct node** head_ref, int value)
+{
+    struct node *new_node = NULL;
+    new_node = (struct node*) malloc(sizeof(struct node));
+
+    if (new_node == NULL)
+        printf("Unable to create node\n");
+
+    new_node->value = value;
+    new_node->next = *head_ref;
+    *head_ref = new_node;
+}
 
 /* return mininimum of a and b */
 int
@@ -32,7 +55,7 @@ find_unique_strips(int *strips_sums[], int seq[], int seq_pos, int r_x, int r_y)
     /* if no tiles remain */
     if (r_x == 0 && r_y == 0)
     {
-        strips_sums[seqno] = (int *)malloc(15 * sizeof(int));
+        strips_sums[seqno] = (int *)malloc(30 * sizeof(int));
 
         if (strips_sums[seqno] == NULL)
             printf("memory allocation failed\n");
@@ -41,7 +64,7 @@ find_unique_strips(int *strips_sums[], int seq[], int seq_pos, int r_x, int r_y)
          * (under the form of partial sums)
          */
         strips_sums[seqno][0] = seq[0];
-        for (int i = 1; i < 15; i++)
+        for (int i = 1; i < 30; i++)
             strips_sums[seqno][i] = strips_sums[seqno][i - 1] + seq[i];
 
         /* increment seq number because this one has just been used */
@@ -65,21 +88,9 @@ find_unique_strips(int *strips_sums[], int seq[], int seq_pos, int r_x, int r_y)
 
 /* check if 2 strips share an inner edge */
 static bool
-share_inner_edge(int *strips_sums[], int seqno1, int seqno2, int *compat[])
+share_inner_edge(int *strips_sums[], int seqno1, int seqno2)
 {
-    /* use pre-computed results */
-    if (compat[seqno1][seqno2] == 1 || compat[seqno2][seqno1] == 1)
-    {
-        //printf("pre-computed %d & %d\n", seqno1, seqno2);
-        return true;
-    }
-    else if (compat[seqno1][seqno2] == 2 || compat[seqno2][seqno1] == 2)
-    {
-        //printf("pre-computed %d & %d\n", seqno1, seqno2);
-        return false;
-    }
-
-    for (int i = 0; i < 15; i++)
+    for (int i = 0; i < 30; i++)
     {
         /* sequence 1 has been read already */
         if (strips_sums[seqno1][i] == 0 ||
@@ -89,11 +100,11 @@ share_inner_edge(int *strips_sums[], int seqno1, int seqno2, int *compat[])
         /* compare partial sums of both sequences
          * 2 sums being equal means tile share inner edge
          */
-        for (int j = 0; j < 15; j++)
+        for (int j = 0; j < 30; j++)
         {
             if (strips_sums[seqno1][i] == strips_sums[seqno2][j])
             {
-                compat[seqno1][seqno2] = 1; // share inner edge
+                /* incompatible strips share inner edges */
                 return true;
             }
             else if (strips_sums[seqno2][j] == 0 ||
@@ -102,9 +113,30 @@ share_inner_edge(int *strips_sums[], int seqno1, int seqno2, int *compat[])
         }
     }
 
-    printf("%d & %d sums always different\n", seqno1, seqno2);
-    compat[seqno1][seqno2] = 2; // don't share inner edge
+    //printf("%d & %d compatible \n", seqno1, seqno2);
+    /* compatible strips don't share inner edges */
     return false;
+}
+
+/* for each stripe, store a list of all the stripes it is
+ * compatible with
+ */
+static void
+create_compatibility_lists(int *strips_sums[], struct node **compatibilities_ref, int curr_seq)
+{
+    for (int j = 0; j < seqno; j++)
+    {
+        /* compatible stripe found
+         * check partial sums of (i) and (j)
+         */
+        if (!share_inner_edge(strips_sums, curr_seq, j))
+        {
+            /* add to list of stripes compatible with stripe curr_seq
+             * new node is of seqno = j
+             */
+            add_head(compatibilities_ref, j);
+        }
+    }
 }
 
 /* compute number of designs of 11 stripes
@@ -113,22 +145,24 @@ share_inner_edge(int *strips_sums[], int seqno1, int seqno2, int *compat[])
  * cur_seqno: sequence number of the current strip
  * depth: number of strips selected so far
  */
-static int
+static void
 compute_designs(int *strips_sums[], int cur_seqno, int depth,
                 int *compat[])
 {
     /* max depth reached */
     if (depth == 11)
-        return 1;
-
-    int sum = 0;
+    {
+        n_designs++;
+        //printf("\n found %d designs \n", n_designs);
+        return;
+    }
 
     /* pick 1st strip */
     if (cur_seqno == -1)
     {
         /* pick any strip */
         for (int i = 0; i < seqno; i++)
-            sum += compute_designs(strips_sums, i, 1, compat);
+            compute_designs(strips_sums, i, 1, compat);
     }
     else
     {
@@ -137,17 +171,14 @@ compute_designs(int *strips_sums[], int cur_seqno, int depth,
          */
         for (int i = 0; i < seqno; i++)
         {
-            if (!share_inner_edge(strips_sums, i, cur_seqno, compat))
-                sum += compute_designs(strips_sums, i, depth + 1, compat);
+            if (!share_inner_edge(strips_sums, i, cur_seqno))
+                compute_designs(strips_sums, i, depth + 1, compat);
         }
     }
 
-    /* check it doesn't have inner edge with previous line
-     * note: we only need to know the previous strip to check
+    /* note: we only need to know the previous strip to check
      * for overlap
      */
-
-    return sum;
 }
 
 int
@@ -190,16 +221,17 @@ main()
         }
     }
 
+    /* TODO remove this */
+    index = 2;
+
     /* Print solutions */
     for (int i = 0; i < index; i++)
-    {
       printf("Found 2*%d + 3*%d = 30 \n", x[i], y[i]);
-    }
 
     /* Note: there are index couples that are solution */
 
     /* Find all unique possibilities for a strip of length 30 */
-
+    /* TODO find upper bound here */
     int max_poss = 1000;
     int *strips[max_poss];
     /* partial sums in design */
@@ -208,7 +240,7 @@ main()
     int ind_str = 0;
 
     int min_xy = 0;
-    int seq[15] = {0};
+    int seq[30] = {0};
 
     /* For each couple (x, y)
      * TODO for all couples (index)
@@ -224,35 +256,49 @@ main()
     for (int i = 0; i < seqno; i++)
     {
         printf("i = %d :", i);
-        for (int j = 0; j < 15; j++)
+        for (int j = 0; j < 30; j++)
             printf("%d ", strips_sums[i][j]);
         printf("\n");
     }
-    printf("\ndone\n");
 
-    /* make a 2D array holding whether strips i and j
-     * share inner edges (0, 1, 2)
+    /* TODO for each strips store list of compatible strips
+     * compatibilites[11] = 2 -> 7 -> 9 -> 15 (singly-linked list)
+     * avoids going through the whole compatibility array every time
      */
-    int *compat[seqno];
+
+    struct node* compatibilities[seqno];
     for (int i = 0; i < seqno; i++)
     {
-        compat[i] = (int *)malloc(seqno * sizeof(int));
-        /* zero the array */
-        memset(compat[i], 0, seqno * sizeof(int));
+        compatibilities[i] = NULL;
+        create_compatibility_lists(strips_sums, &compatibilities[i], i);
     }
+
+    printf("created compatibility lists\n");
+
 
     /* Find all possibilites (designs) for a parquet of 11 strips where
      * 2 adjacent strips can't share an inner edge
      */
-    int n_designs = compute_designs(strips_sums, -1, 0, compat);
+    //compute_designs(strips_sums, -1, 0, compat);
 
-    printf("%d possible designs found", n_designs);
+    //printf("%d possible designs found", n_designs);
 
     /* Free memory */
-    for (int i = 0; i < seqno; i++)
+    struct node *next;
+    struct node *curr;
+    for (int j = 0; j < seqno; j++)
     {
-        free(strips_sums[i]);
-        free(compat[i]);
+        printf("j = %d \n", j);
+        free(strips_sums[j]);
+
+        curr = compatibilities[j];
+        while (curr != NULL)
+        {
+            //printf("curr->value = %d\n", curr->value);
+            next = curr->next;
+            free(curr);
+            curr = next;
+        }
     }
 
     printf("\ndone");
