@@ -141,44 +141,30 @@ create_compatibility_lists(int *strips_sums[], struct node **compatibilities_ref
 
 /* compute number of designs of 11 stripes
  * that don't share inner edges
- * strips_sums: partial sums for all strips
+ * compatibilities: array of lists of compatibles stripes
  * cur_seqno: sequence number of the current strip
  * depth: number of strips selected so far
  */
 static void
-compute_designs(int *strips_sums[], int cur_seqno, int depth,
-                int *compat[])
+compute_designs(struct node* compatibilities[], int cur_seqno, int depth)
 {
     /* max depth reached */
     if (depth == 11)
     {
         n_designs++;
-        //printf("\n found %d designs \n", n_designs);
+        //printf("n_designs = %d\n", n_designs);
         return;
     }
 
-    /* pick 1st strip */
-    if (cur_seqno == -1)
+   /* pick a strip among strips compatible
+    * with the current strip
+    */
+    struct node *curr = compatibilities[cur_seqno];
+    while (curr != NULL)
     {
-        /* pick any strip */
-        for (int i = 0; i < seqno; i++)
-            compute_designs(strips_sums, i, 1, compat);
+        compute_designs(compatibilities, curr->value, depth + 1);
+        curr = curr->next;
     }
-    else
-    {
-        /* pick a strip that doesn't share inner edges
-         * with the current strip
-         */
-        for (int i = 0; i < seqno; i++)
-        {
-            if (!share_inner_edge(strips_sums, i, cur_seqno))
-                compute_designs(strips_sums, i, depth + 1, compat);
-        }
-    }
-
-    /* note: we only need to know the previous strip to check
-     * for overlap
-     */
 }
 
 int
@@ -233,13 +219,9 @@ main()
     /* Find all unique possibilities for a strip of length 30 */
     /* TODO find upper bound here */
     int max_poss = 1000;
-    int *strips[max_poss];
     /* partial sums in design */
     int *strips_sums[max_poss];
 
-    int ind_str = 0;
-
-    int min_xy = 0;
     int seq[30] = {0};
 
     /* For each couple (x, y)
@@ -251,8 +233,9 @@ main()
         find_unique_strips(strips_sums, seq, 0, x[i], y[i]);
     }
 
-    printf("\nall possible strips:\n");
     /* Print all possible strips */
+    /*
+    printf("\nall possible strips:\n");
     for (int i = 0; i < seqno; i++)
     {
         printf("i = %d :", i);
@@ -260,35 +243,34 @@ main()
             printf("%d ", strips_sums[i][j]);
         printf("\n");
     }
+    */
 
-    /* TODO for each strips store list of compatible strips
+    /* for each strip store list of compatible strips
      * compatibilites[11] = 2 -> 7 -> 9 -> 15 (singly-linked list)
-     * avoids going through the whole compatibility array every time
      */
-
     struct node* compatibilities[seqno];
     for (int i = 0; i < seqno; i++)
     {
         compatibilities[i] = NULL;
         create_compatibility_lists(strips_sums, &compatibilities[i], i);
     }
-
     printf("created compatibility lists\n");
 
 
     /* Find all possibilites (designs) for a parquet of 11 strips where
      * 2 adjacent strips can't share an inner edge
      */
-    //compute_designs(strips_sums, -1, 0, compat);
+    /* get all designs starting with 1, then 2, then 3... */
+    for (int i = 0; i < seqno; i++)
+        compute_designs(compatibilities, i, 1);
 
-    //printf("%d possible designs found", n_designs);
+    printf("%d possible designs found", n_designs);
 
     /* Free memory */
     struct node *next;
     struct node *curr;
     for (int j = 0; j < seqno; j++)
     {
-        printf("j = %d \n", j);
         free(strips_sums[j]);
 
         curr = compatibilities[j];
