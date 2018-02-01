@@ -113,7 +113,6 @@ share_inner_edge(int *strips_sums[], int seqno1, int seqno2)
         }
     }
 
-    //printf("%d & %d compatible \n", seqno1, seqno2);
     /* compatible strips don't share inner edges */
     return false;
 }
@@ -127,12 +126,12 @@ create_compatibility_lists(int *strips_sums[], struct node **compatibilities_ref
     for (int j = 0; j < seqno; j++)
     {
         /* compatible stripe found
-         * check partial sums of (i) and (j)
+         * check partial sums of (curr_seq) and (j) stripes
          */
         if (!share_inner_edge(strips_sums, curr_seq, j))
         {
             /* add to list of stripes compatible with stripe curr_seq
-             * new node is of seqno = j
+             * new node is of seq number = j
              */
             add_head(compatibilities_ref, j);
         }
@@ -152,7 +151,6 @@ compute_designs(struct node* compatibilities[], int cur_seqno, int depth)
     if (depth == 11)
     {
         n_designs++;
-        //printf("n_designs = %d\n", n_designs);
         return;
     }
 
@@ -172,12 +170,10 @@ main()
 {
     /* strip of length 30 contains at most 30 tiles */
     int max_tiles = 30;
-
     int x[max_tiles];
     int y[max_tiles];
     int index = 0;
     int sum = 0;
-
 
     /* Find all couples (x, y) such that there can be x tiles of size 2
      * and y tiles of size 3 in a strip of length 30
@@ -207,17 +203,15 @@ main()
         }
     }
 
-    /* TODO remove this */
-    index = 2;
-
     /* Print solutions */
     for (int i = 0; i < index; i++)
       printf("Found 2*%d + 3*%d = 30 \n", x[i], y[i]);
 
-    /* Note: there are index couples that are solution */
+    /* Note: there are index couples that are solution
+     * to the equation: 2x + 3y = 30
+     */
 
     /* Find all unique possibilities for a strip of length 30 */
-    /* TODO find upper bound here */
     int max_poss = 1000;
     /* partial sums in design */
     int *strips_sums[max_poss];
@@ -225,7 +219,6 @@ main()
     int seq[30] = {0};
 
     /* For each couple (x, y)
-     * TODO for all couples (index)
      */
     for (int i = 0; i < index; i++)
     {
@@ -233,7 +226,7 @@ main()
         find_unique_strips(strips_sums, seq, 0, x[i], y[i]);
     }
 
-    /* Print all possible strips */
+    /* uncomment to print all possible strips */
     /*
     printf("\nall possible strips:\n");
     for (int i = 0; i < seqno; i++)
@@ -245,7 +238,7 @@ main()
     }
     */
 
-    /* for each strip store list of compatible strips
+    /* for each strip, store list of compatible strips
      * compatibilites[11] = 2 -> 7 -> 9 -> 15 (singly-linked list)
      */
     struct node* compatibilities[seqno];
@@ -257,7 +250,7 @@ main()
     printf("created compatibility lists\n");
 
 
-    /* Find all possibilites (designs) for a parquet of 11 strips where
+    /* Find all designs for a parquet of 11 strips where
      * 2 adjacent strips can't share an inner edge
      */
     /* get all designs starting with 1, then 2, then 3... */
@@ -276,7 +269,6 @@ main()
         curr = compatibilities[j];
         while (curr != NULL)
         {
-            //printf("curr->value = %d\n", curr->value);
             next = curr->next;
             free(curr);
             curr = next;
